@@ -20,3 +20,9 @@ const httpServer = http.createServer((req, res) => {
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] }
 });
+const pubClient = createClient({ url: REDIS_URL });
+const subClient = pubClient.duplicate();
+
+for (const client of [pubClient, subClient]) {
+  client.on('error', (err) => console.error('[Redis]', err.message));
+}
