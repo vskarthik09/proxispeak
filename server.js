@@ -26,3 +26,5 @@ const subClient = pubClient.duplicate();
 for (const client of [pubClient, subClient]) {
   client.on('error', (err) => console.error('[Redis]', err.message));
 }
+await Promise.all([pubClient.connect(), subClient.connect()]);
+io.adapter(createAdapter(pubClient, subClient));
