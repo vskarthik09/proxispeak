@@ -28,3 +28,10 @@ for (const client of [pubClient, subClient]) {
 }
 await Promise.all([pubClient.connect(), subClient.connect()]);
 io.adapter(createAdapter(pubClient, subClient));
+const rooms = new Map();
+
+function getRoomPeers(roomId, socketId) {
+  const members = rooms.get(roomId) || new Set();
+  return [...members].filter((id) => id !== socketId);
+}
+
