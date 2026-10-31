@@ -34,4 +34,11 @@ function getRoomPeers(roomId, socketId) {
   const members = rooms.get(roomId) || new Set();
   return [...members].filter((id) => id !== socketId);
 }
+io.on('connection', (socket) => {
+  console.log(`Socket connected: ${socket.id} on ${PORT}`);
 
+  socket.on('room:join', ({ roomId, displayName } = {}, ack = () => {}) => {
+    if (!roomId || typeof roomId !== 'string') {
+      ack({ ok: false, error: 'roomId is required' });
+      return;
+    }
