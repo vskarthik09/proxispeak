@@ -42,3 +42,10 @@ io.on('connection', (socket) => {
       ack({ ok: false, error: 'roomId is required' });
       return;
     }
+   const cleanName = String(displayName || 'Guest').slice(0, 40);
+    socket.data.roomId = roomId;
+    socket.data.displayName = cleanName;
+    socket.join(roomId);
+
+    if (!rooms.has(roomId)) rooms.set(roomId, new Set());
+    rooms.get(roomId).add(socket.id);
