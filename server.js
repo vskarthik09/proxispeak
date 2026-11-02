@@ -49,3 +49,5 @@ io.on('connection', (socket) => {
 
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
     rooms.get(roomId).add(socket.id);
+        if (targetId && sdp) io.to(targetId).emit('webrtc:answer', { fromId: socket.id, sdp });
+    
