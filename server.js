@@ -51,3 +51,12 @@ io.on('connection', (socket) => {
     rooms.get(roomId).add(socket.id);
         if (targetId && sdp) io.to(targetId).emit('webrtc:answer', { fromId: socket.id, sdp });
     
+ socket.on('webrtc:answer', ({ targetId, sdp } = {}) => {
+    if (targetId && sdp) io.to(targetId).emit('webrtc:answer', { fromId: socket.id, sdp });
+  });
+
+  socket.on('webrtc:ice-candidate', ({ targetId, candidate } = {}) => {
+    if (targetId && candidate) io.to(targetId).emit('webrtc:ice-candidate', {
+      fromId: socket.id, candidate
+    });
+  });
