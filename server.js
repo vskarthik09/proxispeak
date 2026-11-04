@@ -60,3 +60,23 @@ io.on('connection', (socket) => {
       fromId: socket.id, candidate
     });
   });
+ socket.on('room:leave', () => leaveRoom(socket));
+
+  socket.on('disconnect', () => {
+    leaveRoom(socket);
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+function leaveRoom(socket) {
+  const roomId = socket.data.roomId;
+  if (!roomId) return;
+  socket.to(roomId).emit('peer:left', { socketId: socket.id });
+  const members = rooms.get(roomId);
+  if (members) {
+    members.delete(socket.id);
+    if (members.size === 0) rooms.delete(roomId);
+  }
+  socket.leave(roomId);
+  delete socket.data.roomId;
+}
