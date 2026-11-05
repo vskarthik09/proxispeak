@@ -20,20 +20,24 @@ const httpServer = http.createServer((req, res) => {
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] }
 });
+
 const pubClient = createClient({ url: REDIS_URL });
 const subClient = pubClient.duplicate();
 
 for (const client of [pubClient, subClient]) {
   client.on('error', (err) => console.error('[Redis]', err.message));
 }
+
 await Promise.all([pubClient.connect(), subClient.connect()]);
 io.adapter(createAdapter(pubClient, subClient));
+
 const rooms = new Map();
 
 function getRoomPeers(roomId, socketId) {
   const members = rooms.get(roomId) || new Set();
   return [...members].filter((id) => id !== socketId);
 }
+
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id} on ${PORT}`);
 
@@ -42,16 +46,22 @@ io.on('connection', (socket) => {
       ack({ ok: false, error: 'roomId is required' });
       return;
     }
-   const cleanName = String(displayName || 'Guest').slice(0, 40);
+
+    const cleanName = String(displayName || 'Guest').slice(0, 40);
     socket.data.roomId = roomId;
     socket.data.displayName = cleanName;
     socket.join(roomId);
 
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
     rooms.get(roomId).add(socket.id);
-        if (targetId && sdp) io.to(targetId).emit('webrtc:answer', { fromId: socket.id, sdp });
-    
- socket.on('webrtc:answer', ({ targetId, sdp } = {}) => {
+
+  socket.on('webrtc:offer', ({ targetId, sdp } = {}) => {
+    if (targetId && sdp) io.to(targetId).emit('webrtc:offer', {
+      fromId: socket.id, sdp, displayName: socket.data.displayName || 'Guest'
+    });
+  });
+
+  socket.on('webrtc:answer', ({ targetId, sdp } = {}) => {
     if (targetId && sdp) io.to(targetId).emit('webrtc:answer', { fromId: socket.id, sdp });
   });
 
@@ -60,7 +70,8 @@ io.on('connection', (socket) => {
       fromId: socket.id, candidate
     });
   });
- socket.on('room:leave', () => leaveRoom(socket));
+
+  socket.on('room:leave', () => leaveRoom(socket));
 
   socket.on('disconnect', () => {
     leaveRoom(socket);
@@ -80,3 +91,16 @@ function leaveRoom(socket) {
   socket.leave(roomId);
   delete socket.data.roomId;
 }
+
+httpServer.listen(PORT, () => {
+  console.log(`Signaling server listening at http://localhost:${PORT}`);
+  console.log(`Redis adapter configured: ${REDIS_URL}`);
+});
+
+async function shutdown() {
+  await new Promise((resolve) => io.close(resolve));
+  await Promise.allSettled([pubClient.quit(), subClient.quit()]);
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
